@@ -4,4 +4,3 @@
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)
-- [Azure Data Studio (optional)](https://learn.microsoft.com/sql/azure-data-studio/download-azure-data-studio)

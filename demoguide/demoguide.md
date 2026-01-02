@@ -49,7 +49,7 @@ This demo has two parts:
 
 Before the app can query Azure SQL using Managed Identity, the database must contain a user for the managed identity.
 
-> Note: This template includes an `azd` `postprovision` hook that can automatically set the SQL Azure AD admin (when permitted) and create a least-privilege database role (`catalog_reader`) with the managed identity users already added.
+> Note: This template includes an `azd postprovision` hook that can automatically set the SQL Azure AD admin (when permitted) and create a least-privilege database role (`catalog_reader`) with the managed identity users already added.
 
 > Optional (recommended for teaching): This template uses a hook-based prompt during `azd up`.
 > - When prompted **"Run automatic SQL bootstrap after provision? (Y/n)"**, choose:
@@ -88,39 +88,37 @@ Before the app can query Azure SQL using Managed Identity, the database must con
 
         Tip: Replace `<APP_SERVICE_NAME>` with the output value (example: `app-abc123`).
 
-        5. (Optional) Confirm the role, permissions, and membership
+    5. (Optional) Confirm the role, permissions, and membership
 
-                ```sql
+        ```sql
+        -- Confirm the role exists
+        select name
+        from sys.database_principals
+        where type = 'R'
+            and name = 'catalog_reader';
 
-                    -- Confirm the role exists
-                    select name
-                    from sys.database_principals
-                    where type = 'R'
-                        and name = 'catalog_reader';
-    
-                    -- Confirm schema permission was granted
-                    select
-                            dp.state_desc,
-                            dp.permission_name,
-                            s.name as schema_name,
-                            grantee.name as grantee
-                    from sys.database_permissions dp
-                    join sys.database_principals grantee on grantee.principal_id = dp.grantee_principal_id
-                    left join sys.schemas s on s.schema_id = dp.major_id
-                    where grantee.name = 'catalog_reader'
-                        and dp.class_desc = 'SCHEMA';
-    
-                    -- Confirm the system-assigned identity is a member of the role
-                    select
-                            rolep.name as role_name,
-                            memberp.name as member_name
-                    from sys.database_role_members drm
-                    join sys.database_principals rolep on rolep.principal_id = drm.role_principal_id
-                    join sys.database_principals memberp on memberp.principal_id = drm.member_principal_id
-                    where rolep.name = 'catalog_reader'
-                        and memberp.name = '<APP_SERVICE_NAME>';
+        -- Confirm schema permission was granted
+        select
+            dp.state_desc,
+            dp.permission_name,
+            s.name as schema_name,
+            grantee.name as grantee
+        from sys.database_permissions dp
+        join sys.database_principals grantee on grantee.principal_id = dp.grantee_principal_id
+        left join sys.schemas s on s.schema_id = dp.major_id
+        where grantee.name = 'catalog_reader'
+            and dp.class_desc = 'SCHEMA';
 
-                ```
+        -- Confirm the system-assigned identity is a member of the role
+        select
+            rolep.name as role_name,
+            memberp.name as member_name
+        from sys.database_role_members drm
+        join sys.database_principals rolep on rolep.principal_id = drm.role_principal_id
+        join sys.database_principals memberp on memberp.principal_id = drm.member_principal_id
+        where rolep.name = 'catalog_reader'
+            and memberp.name = '<APP_SERVICE_NAME>';
+        ```
 
 3. Verify the app is using System-assigned Managed Identity
     1. Browse to `APP_ENDPOINT`.
@@ -135,10 +133,10 @@ Before the app can query Azure SQL using Managed Identity, the database must con
 
     3. (Optional failure demo) Do **not** set the `ManagedIdentity__UserAssignedClientId` application setting yet.
         1. Browse to `APP_ENDPOINT` and open **Products**.
-        2. Expected result: the page shows an error (unable to query Azure SQL) because the app defaults to the System-assigned managed identity unless a User-assigned client id is configured.
-        3. Show the code path that selects which identity to use:
-            - Connection factory: [src/web/ManagedIdentityCatalog/Services/SqlConnectionFactory.cs](src/web/ManagedIdentityCatalog/Services/SqlConnectionFactory.cs)
-            - Identity label (based on config): [src/web/ManagedIdentityCatalog/Services/IdentityModeProvider.cs](src/web/ManagedIdentityCatalog/Services/IdentityModeProvider.cs)
+        2. Expected result: the page shows an error (unable to query Azure SQL) because the User Managed Identity requires a Client ID to be specified.
+        3. Explain the code path that selects which identity to use:
+            - Connection factory: [SqlConnectionFactory.cs](https://github.com/rob-foulkrod/tdd-managed-identity-sql/blob/main/src/web/ManagedIdentityCatalog/Services/SqlConnectionFactory.cs)
+            - Identity label (based on config): [IdentityModeProvider.cs](https://github.com/rob-foulkrod/tdd-managed-identity-sql/blob/main/src/web/ManagedIdentityCatalog/Services/IdentityModeProvider.cs)
 
     4. Fix the configuration
         1. Go to **Configuration** and set the app setting:
@@ -152,18 +150,18 @@ Before the app can query Azure SQL using Managed Identity, the database must con
         ALTER ROLE [catalog_reader] ADD MEMBER [<USER_ASSIGNED_MI_NAME>];
         ```
 
-        6. (Optional) Confirm the user-assigned identity is a member of the role
+    6. (Optional) Confirm the user-assigned identity is a member of the role
 
-                ```sql
-                select
-                        rolep.name as role_name,
-                        memberp.name as member_name
-                from sys.database_role_members drm
-                join sys.database_principals rolep on rolep.principal_id = drm.role_principal_id
-                join sys.database_principals memberp on memberp.principal_id = drm.member_principal_id
-                where rolep.name = 'catalog_reader'
-                    and memberp.name = '<USER_ASSIGNED_MI_NAME>';
-                ```
+        ```sql
+        select
+            rolep.name as role_name,
+            memberp.name as member_name
+        from sys.database_role_members drm
+        join sys.database_principals rolep on rolep.principal_id = drm.role_principal_id
+        join sys.database_principals memberp on memberp.principal_id = drm.member_principal_id
+        where rolep.name = 'catalog_reader'
+            and memberp.name = '<USER_ASSIGNED_MI_NAME>';
+        ```
 
 5. Verify the app is now using User-assigned Managed Identity
     1. Refresh the **Products** page.

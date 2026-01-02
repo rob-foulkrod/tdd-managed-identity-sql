@@ -19,13 +19,12 @@ A trainer-focused demo that deploys an Azure App Service (ASP.NET Core) and an A
 
 
 ```mermaid
-flowchart TD
-  B[Browser]
-  A[Azure App Service\n(ASP.NET Core)]
-  S[(Azure SQL Database\nAdventureWorksLT)]
-
-  B --> A
-  A -->|AAD token via Managed Identity| S
+graph TD;
+   B[Browser];
+   A[Azure App Service - ASP.NET Core];
+   S[(Azure SQL Database - AdventureWorksLT)];
+   B-->A;
+   A-->|AAD token via Managed Identity|S;
 ```
 
 
@@ -39,7 +38,8 @@ Approximately **10 minutes**.
 
 - **Azure Subscription** with Owner or Contributor access
 - **[Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)** installed
-- Additional prerequisites listed in [prereqs.md](prereqs.md)
+- **[.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)**
+- **[PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)**
 
 ## 🚀 Deploy in 3 Steps
 
@@ -56,7 +56,7 @@ Approximately **10 minutes**.
 ## 🎓 What You'll Demonstrate
 
 - System-assigned managed identity: the app authenticates to Azure SQL without secrets.
-- User-assigned managed identity: the code path already exists and is activated by setting `ManagedIdentity:UserAssignedClientId`.
+- User-assigned managed identity: the code path already exists and is activated by setting `ManagedIdentity__UserAssignedClientId`.
 - Operational differences:
    - Identity lifecycle (tied to the resource vs reusable)
    - Least-privilege database roles by identity
