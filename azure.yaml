@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+# CONTRIBUTOR: Update the name and version for your template
+# Try: tdd-my-scenario with version 1.0.0
+
+name: tdd-managed-identity-sql
+metadata:
+  template: tdd-managed-identity-sql@1.0.0
+infra:
+   provider: "bicep"
+   parameters:
+     environmentName: ${AZURE_ENV_NAME}
+     location: ${AZURE_LOCATION}
+     whitelistPublicIp: ${PUBLIC_IP}
+     sqlAdminPassword: ${SQL_ADMIN_PASSWORD}
+
+services:
+  web:
+    project: ./src/web/ManagedIdentityCatalog
+    language: dotnet
+    host: appservice
+
+# CONTRIBUTOR: Uncomment and customize hooks if you need lifecycle scripts (35% of templates use hooks)
+# hooks:
+#   preup:
+#     - run: pwsh scripts/setup.ps1
+#       shell: pwsh
+#   postprovision:
+#     - run: pwsh scripts/configure.ps1
+#       shell: pwsh
+#   postdeploy:
+#     - run: pwsh scripts/finalize.ps1
+#       shell: pwsh
+
+hooks:
+  preup:
+    - shell: pwsh
+      run: ./scripts/preup.ps1
+      interactive: true
+  postprovision:
+    - shell: pwsh
+      run: ./scripts/sql-bootstrap.ps1
+      interactive: true
