@@ -1,0 +1,70 @@
+@page
+@model ManagedIdentityCatalog.Pages.Products.IndexModel
+@{
+    ViewData["Title"] = "Products";
+}
+
+<h1>Products</h1>
+
+<form method="get" class="row g-3 mb-3">
+    <div class="col-md-4">
+        <label class="form-label" for="categoryId">Category</label>
+        <select class="form-select" id="categoryId" name="categoryId">
+            <option value="">All categories</option>
+            @foreach (var c in Model.Categories)
+            {
+                <option value="@c.ProductCategoryId" selected="@(Model.CategoryId == c.ProductCategoryId)">@c.Name</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-5">
+        <label class="form-label" for="q">Search</label>
+        <input class="form-control" id="q" name="q" value="@Model.Q" placeholder="name contains..." />
+    </div>
+
+    <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-primary" type="submit">Filter</button>
+        <a class="btn btn-link" asp-page="/Products/Index">Reset</a>
+    </div>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-warning" role="alert">
+        @Model.ErrorMessage
+    </div>
+}
+
+@if (Model.Products.Count == 0 && string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <p class="text-muted">No products found.</p>
+}
+else if (Model.Products.Count > 0)
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Color</th>
+                <th class="text-end">List Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.Products)
+            {
+                <tr>
+                    <td>@p.Name</td>
+                    <td>@(p.CategoryName ?? "-")</td>
+                    <td>@(p.Color ?? "-")</td>
+                    <td class="text-end">@p.ListPrice.ToString("C")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<p class="text-muted small">
+    Showing up to @Model.Take items.
+</p>
