@@ -43,7 +43,7 @@ Approximately **10 minutes**.
 
 ## 🚀 Deploy in 3 Steps
 
-1. `azd init -t [owner]/[repo]`
+1. `azd init -t rob-foulkrod/tdd-managed-identity-sql`
 2. `azd up`
 3. `azd down --purge --force`
 
@@ -63,7 +63,7 @@ Approximately **10 minutes**.
 
 ## 📚 Demo Guide
 
-Complete guide available in: https://github.com/[owner]/[repo]/blob/main/demoguide/demoguide.md
+Complete guide available in: https://github.com/rob-foulkrod/tdd-managed-identity-sql/blob/main/demoguide/demoguide.md
 
 ## 🐛 Troubleshooting
 
