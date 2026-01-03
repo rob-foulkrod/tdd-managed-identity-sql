@@ -255,4 +255,172 @@ public sealed class CatalogRepository
 
         return results;
     }
+
+    // Phase 3: Specialized Query Modes
+
+    public async Task<IReadOnlyList<BestSellerDto>> GetBestSellersAsync(int take, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+
+        var sql = $"""
+            select top (@take)
+                p.ProductID,
+                p.Name,
+                SUM(sod.OrderQty) as TotalSold,
+                SUM(sod.OrderQty * sod.UnitPrice) as Revenue
+            from SalesLT.Product p
+            inner join SalesLT.SalesOrderDetail sod on sod.ProductID = p.ProductID
+            group by p.ProductID, p.Name
+            order by SUM(sod.OrderQty) desc;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@take", take);
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+
+        var results = new List<BestSellerDto>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(new BestSellerDto(
+                ProductId: reader.GetInt32(0),
+                Name: reader.GetString(1),
+                TotalUnitsSold: reader.GetInt32(2),
+                TotalRevenue: reader.GetDecimal(3)));
+        }
+
+        return results;
+    }
+
+    public async Task<IReadOnlyList<PriceAnalysisDto>> GetPriceAnalysisAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+
+        const string sql = """
+            select 
+                c.Name as Category,
+                COUNT(*) as ProductCount,
+                AVG(p.ListPrice) as AvgPrice,
+                MIN(p.ListPrice) as MinPrice,
+                MAX(p.ListPrice) as MaxPrice,
+                AVG(case 
+                    when p.ListPrice is null or p.ListPrice = 0 then null
+                    when p.StandardCost is null then null
+                    else ((p.ListPrice - p.StandardCost) / p.ListPrice * 100)
+                end) as AvgMarginPercent
+            from SalesLT.Product p
+            inner join SalesLT.ProductCategory c on c.ProductCategoryID = p.ProductCategoryID
+            group by c.Name
+            order by AVG(p.ListPrice) desc;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+
+        var results = new List<PriceAnalysisDto>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(new PriceAnalysisDto(
+                Category: reader.GetString(0),
+                ProductCount: reader.GetInt32(1),
+                AvgPrice: reader.GetDecimal(2),
+                MinPrice: reader.GetDecimal(3),
+                MaxPrice: reader.GetDecimal(4),
+                AvgMarginPercent: reader.IsDBNull(5) ? null : reader.GetDecimal(5)));
+        }
+
+        return results;
+    }
+
+    public async Task<IReadOnlyList<CategoryHierarchyDto>> GetCategoryHierarchyAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+
+        const string sql = """
+            with CategoryHierarchy as (
+                select 
+                    ProductCategoryID, 
+                    Name, 
+                    ParentProductCategoryID, 
+                    cast(Name as nvarchar(max)) as CategoryPath, 
+                    0 as Level
+                from SalesLT.ProductCategory
+                where ParentProductCategoryID is null
+                
+                union all
+                
+                select 
+                    c.ProductCategoryID, 
+                    c.Name, 
+                    c.ParentProductCategoryID,
+                    cast(h.CategoryPath + ' → ' + c.Name as nvarchar(max)),
+                    h.Level + 1
+                from SalesLT.ProductCategory c
+                inner join CategoryHierarchy h on c.ParentProductCategoryID = h.ProductCategoryID
+            )
+            select 
+                h.ProductCategoryID,
+                h.Name,
+                h.ParentProductCategoryID,
+                h.CategoryPath,
+                h.Level,
+                count(p.ProductID) as ProductCount
+            from CategoryHierarchy h
+            left join SalesLT.Product p on p.ProductCategoryID = h.ProductCategoryID
+            group by h.ProductCategoryID, h.Name, h.ParentProductCategoryID, h.CategoryPath, h.Level
+            order by h.CategoryPath;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+
+        var results = new List<CategoryHierarchyDto>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(new CategoryHierarchyDto(
+                CategoryId: reader.GetInt32(0),
+                Name: reader.GetString(1),
+                ParentCategoryId: reader.IsDBNull(2) ? null : reader.GetInt32(2),
+                CategoryPath: reader.GetString(3),
+                Level: reader.GetInt32(4),
+                ProductCount: reader.GetInt32(5)));
+        }
+
+        return results;
+    }
+
+    public async Task<IReadOnlyList<RecentActivityDto>> GetRecentActivityAsync(int topN, CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
+
+        const string sql = """
+            select top (@topN)
+                p.ProductID,
+                p.Name,
+                soh.OrderDate,
+                SUM(sod.OrderQty) as QtySold,
+                SUM(sod.LineTotal) as Revenue
+            from SalesLT.Product p
+            inner join SalesLT.SalesOrderDetail sod on sod.ProductID = p.ProductID
+            inner join SalesLT.SalesOrderHeader soh on soh.SalesOrderID = sod.SalesOrderID
+            group by p.ProductID, p.Name, soh.OrderDate
+            order by soh.OrderDate desc;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@topN", topN);
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+
+        var results = new List<RecentActivityDto>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(new RecentActivityDto(
+                ProductId: reader.GetInt32(0),
+                Name: reader.GetString(1),
+                OrderDate: reader.GetDateTime(2),
+                QtySold: reader.GetInt32(3),
+                Revenue: reader.GetDecimal(4)));
+        }
+
+        return results;
+    }
 }

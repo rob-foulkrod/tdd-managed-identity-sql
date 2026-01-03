@@ -44,6 +44,9 @@ public sealed class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public bool ShowAdvanced { get; set; } = false;
 
+    [BindProperty(SupportsGet = true)]
+    public QueryMode Mode { get; set; } = QueryMode.Standard;
+
     public int Take { get; } = 50;
 
     public List<ProductCategoryDto> Categories { get; private set; } = [];
@@ -51,6 +54,14 @@ public sealed class IndexModel : PageModel
     public List<ProductDto> Products { get; private set; } = [];
     
     public List<ProductEnrichedDto> ProductsEnriched { get; private set; } = [];
+    
+    public List<BestSellerDto> BestSellers { get; private set; } = [];
+    
+    public List<PriceAnalysisDto> PriceAnalysis { get; private set; } = [];
+    
+    public List<CategoryHierarchyDto> CategoryHierarchy { get; private set; } = [];
+    
+    public List<RecentActivityDto> RecentActivity { get; private set; } = [];
     
     public List<string> AvailableColors { get; private set; } = [];
     
@@ -64,62 +75,71 @@ public sealed class IndexModel : PageModel
     {
         Exception? capturedError = null;
         
-        try
+        // Always load categories, colors, sizes for filters (except in specialized modes)
+        if (Mode == QueryMode.Standard)
         {
-            Categories = (await _repository.GetCategoriesAsync(cancellationToken)).ToList();
-        }
-        catch (Exception ex)
-        {
-            capturedError = ex;
-        }
-        
-        try
-        {
-            AvailableColors = (await _repository.GetDistinctColorsAsync(cancellationToken)).ToList();
-        }
-        catch (Exception ex)
-        {
-            capturedError ??= ex;
-        }
-        
-        try
-        {
-            AvailableSizes = (await _repository.GetDistinctSizesAsync(cancellationToken)).ToList();
-        }
-        catch (Exception ex)
-        {
-            capturedError ??= ex;
-        }
-        
-        try
-        {
-            if (ShowAdvanced)
+            try
             {
-                ProductsEnriched = (await _repository.GetProductsEnrichedAsync(
-                    CategoryId, 
-                    Q, 
-                    PriceMin, 
-                    PriceMax, 
-                    Color, 
-                    Size, 
-                    SortBy, 
-                    ShowDiscontinued, 
-                    Take, 
-                    cancellationToken)).ToList();
+                Categories = (await _repository.GetCategoriesAsync(cancellationToken)).ToList();
             }
-            else
+            catch (Exception ex)
             {
-                Products = (await _repository.GetProductsAsync(
-                    CategoryId, 
-                    Q, 
-                    PriceMin, 
-                    PriceMax, 
-                    Color, 
-                    Size, 
-                    SortBy, 
-                    ShowDiscontinued, 
-                    Take, 
-                    cancellationToken)).ToList();
+                capturedError = ex;
+            }
+            
+            try
+            {
+                AvailableColors = (await _repository.GetDistinctColorsAsync(cancellationToken)).ToList();
+            }
+            catch (Exception ex)
+            {
+                capturedError ??= ex;
+            }
+            
+            try
+            {
+                AvailableSizes = (await _repository.GetDistinctSizesAsync(cancellationToken)).ToList();
+            }
+            catch (Exception ex)
+            {
+                capturedError ??= ex;
+            }
+        }
+        
+        // Load data based on active mode
+        try
+        {
+            switch (Mode)
+            {
+                case QueryMode.BestSellers:
+                    BestSellers = (await _repository.GetBestSellersAsync(Take, cancellationToken)).ToList();
+                    break;
+                    
+                case QueryMode.PriceAnalysis:
+                    PriceAnalysis = (await _repository.GetPriceAnalysisAsync(cancellationToken)).ToList();
+                    break;
+                    
+                case QueryMode.CategoryHierarchy:
+                    CategoryHierarchy = (await _repository.GetCategoryHierarchyAsync(cancellationToken)).ToList();
+                    break;
+                    
+                case QueryMode.RecentActivity:
+                    RecentActivity = (await _repository.GetRecentActivityAsync(50, cancellationToken)).ToList();
+                    break;
+                    
+                case QueryMode.Standard:
+                default:
+                    if (ShowAdvanced)
+                    {
+                        ProductsEnriched = (await _repository.GetProductsEnrichedAsync(
+                            CategoryId, Q, PriceMin, PriceMax, Color, Size, SortBy, ShowDiscontinued, Take, cancellationToken)).ToList();
+                    }
+                    else
+                    {
+                        Products = (await _repository.GetProductsAsync(
+                            CategoryId, Q, PriceMin, PriceMax, Color, Size, SortBy, ShowDiscontinued, Take, cancellationToken)).ToList();
+                    }
+                    break;
             }
         }
         catch (Exception ex)

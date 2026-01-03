@@ -1,5 +1,6 @@
 @page
 @using System.Globalization
+@using ManagedIdentityCatalog.Models
 @model ManagedIdentityCatalog.Pages.Products.IndexModel
 @{
     ViewData["Title"] = "Products";
@@ -8,6 +9,42 @@
 
 <h1>Products</h1>
 
+<!-- Query Mode Tabs -->
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+        <a class="nav-link @(Model.Mode == QueryMode.Standard ? "active" : "")" 
+           asp-page="/Products/Index" asp-route-mode="Standard">
+            <i class="bi bi-grid"></i> Standard View
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link @(Model.Mode == QueryMode.BestSellers ? "active" : "")" 
+           asp-page="/Products/Index" asp-route-mode="BestSellers">
+            <i class="bi bi-trophy"></i> Best Sellers
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link @(Model.Mode == QueryMode.PriceAnalysis ? "active" : "")" 
+           asp-page="/Products/Index" asp-route-mode="PriceAnalysis">
+            <i class="bi bi-bar-chart"></i> Price Analysis
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link @(Model.Mode == QueryMode.CategoryHierarchy ? "active" : "")" 
+           asp-page="/Products/Index" asp-route-mode="CategoryHierarchy">
+            <i class="bi bi-diagram-3"></i> Category Tree
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link @(Model.Mode == QueryMode.RecentActivity ? "active" : "")" 
+           asp-page="/Products/Index" asp-route-mode="RecentActivity">
+            <i class="bi bi-clock-history"></i> Latest Orders
+        </a>
+    </li>
+</ul>
+
+@if (Model.Mode == QueryMode.Standard)
+{
 <form method="get" class="mb-3">
     <div class="row g-3 mb-3">
         <div class="col-md-3">
@@ -265,3 +302,152 @@ else if (Model.Products.Count > 0)
 <p class="text-muted small">
     Showing up to @Model.Take items.
 </p>
+}
+@* End Standard Mode *@
+
+@* Best Sellers Mode *@
+@if (Model.Mode == QueryMode.BestSellers && Model.BestSellers.Count > 0)
+{
+    <div class="alert alert-info" role="alert">
+        <strong>Best Sellers:</strong> Top @Model.Take products by total units sold across all orders.
+    </div>
+    
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Product Name</th>
+                <th class="text-end">Units Sold</th>
+                <th class="text-end">Total Revenue</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{int rank = 1;}
+            @foreach (var p in Model.BestSellers)
+            {
+                <tr>
+                    <td><strong>@rank</strong></td>
+                    <td>@p.Name</td>
+                    <td class="text-end">@p.TotalUnitsSold.ToString("N0")</td>
+                    <td class="text-end">@p.TotalRevenue.ToString("C2", usCulture)</td>
+                </tr>
+                rank++;
+            }
+        </tbody>
+    </table>
+}
+
+@* Price Analysis Mode *@
+@if (Model.Mode == QueryMode.PriceAnalysis && Model.PriceAnalysis.Count > 0)
+{
+    <div class="alert alert-info" role="alert">
+        <strong>Price Analysis:</strong> Aggregated pricing metrics by product category.
+    </div>
+    
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th class="text-end">Products</th>
+                <th class="text-end">Avg Price</th>
+                <th class="text-end">Min Price</th>
+                <th class="text-end">Max Price</th>
+                <th class="text-end">Avg Margin %</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.PriceAnalysis)
+            {
+                <tr>
+                    <td><strong>@p.Category</strong></td>
+                    <td class="text-end">@p.ProductCount.ToString("N0")</td>
+                    <td class="text-end">@p.AvgPrice.ToString("C2", usCulture)</td>
+                    <td class="text-end">@p.MinPrice.ToString("C2", usCulture)</td>
+                    <td class="text-end">@p.MaxPrice.ToString("C2", usCulture)</td>
+                    <td class="text-end">
+                        @if (p.AvgMarginPercent.HasValue)
+                        {
+                            @p.AvgMarginPercent.Value.ToString("F1")<text>%</text>
+                        }
+                        else
+                        {
+                            <text>-</text>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@* Category Hierarchy Mode *@
+@if (Model.Mode == QueryMode.CategoryHierarchy && Model.CategoryHierarchy.Count > 0)
+{
+    <div class="alert alert-info" role="alert">
+        <strong>Category Hierarchy:</strong> Parent-child category tree using recursive CTE query.
+    </div>
+    
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Category Path</th>
+                <th class="text-end">Level</th>
+                <th class="text-end">Products</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.CategoryHierarchy)
+            {
+                var indent = new string(' ', c.Level * 4);
+                <tr>
+                    <td>
+                        <span style="font-family: monospace;">@indent</span>@c.CategoryPath
+                    </td>
+                    <td class="text-end">@c.Level</td>
+                    <td class="text-end">@c.ProductCount.ToString("N0")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@* Recent Activity Mode *@
+@if (Model.Mode == QueryMode.RecentActivity && Model.RecentActivity.Count > 0)
+{
+    <div class="alert alert-info" role="alert">
+        <strong>Latest Orders:</strong> Top 50 most recent orders by date (showing historical data).
+    </div>
+    
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Order Date</th>
+                <th class="text-end">Qty Sold</th>
+                <th class="text-end">Revenue</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.RecentActivity)
+            {
+                <tr>
+                    <td>@p.Name</td>
+                    <td>@p.OrderDate.ToString("yyyy-MM-dd")</td>
+                    <td class="text-end">@p.QtySold.ToString("N0")</td>
+                    <td class="text-end">@p.Revenue.ToString("C2", usCulture)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if ((Model.Mode == QueryMode.BestSellers && Model.BestSellers.Count == 0) ||
+     (Model.Mode == QueryMode.PriceAnalysis && Model.PriceAnalysis.Count == 0) ||
+     (Model.Mode == QueryMode.CategoryHierarchy && Model.CategoryHierarchy.Count == 0) ||
+     (Model.Mode == QueryMode.RecentActivity && Model.RecentActivity.Count == 0))
+{
+    @if (string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <p class="text-muted">No data found for this view.</p>
+    }
+}
