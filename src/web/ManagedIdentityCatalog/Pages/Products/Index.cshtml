@@ -1,31 +1,99 @@
 @page
+@using System.Globalization
 @model ManagedIdentityCatalog.Pages.Products.IndexModel
 @{
     ViewData["Title"] = "Products";
+    var usCulture = CultureInfo.GetCultureInfo("en-US");
 }
 
 <h1>Products</h1>
 
-<form method="get" class="row g-3 mb-3">
-    <div class="col-md-4">
-        <label class="form-label" for="categoryId">Category</label>
-        <select class="form-select" id="categoryId" name="categoryId">
-            <option value="">All categories</option>
-            @foreach (var c in Model.Categories)
-            {
-                <option value="@c.ProductCategoryId" selected="@(Model.CategoryId == c.ProductCategoryId)">@c.Name</option>
-            }
-        </select>
+<form method="get" class="mb-3">
+    <div class="row g-3 mb-3">
+        <div class="col-md-3">
+            <label class="form-label" for="categoryId">Category</label>
+            <select class="form-select" id="categoryId" name="categoryId">
+                <option value="">All categories</option>
+                @foreach (var c in Model.Categories)
+                {
+                    <option value="@c.ProductCategoryId" selected="@(Model.CategoryId == c.ProductCategoryId)">@c.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label" for="q">Search Name</label>
+            <input class="form-control" id="q" name="q" value="@Model.Q" placeholder="contains..." />
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="color">Color</label>
+            <select class="form-select" id="color" name="color">
+                <option value="">Any color</option>
+                @foreach (var c in Model.AvailableColors)
+                {
+                    <option value="@c" selected="@(Model.Color == c)">@c</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="size">Size</label>
+            <select class="form-select" id="size" name="size">
+                <option value="">Any size</option>
+                @foreach (var s in Model.AvailableSizes)
+                {
+                    <option value="@s" selected="@(Model.Size == s)">@s</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="sortBy">Sort By</label>
+            <select class="form-select" id="sortBy" name="sortBy">
+                <option value="name" selected="@(Model.SortBy == "name")">Name A-Z</option>
+                <option value="price-asc" selected="@(Model.SortBy == "price-asc")">Price: Low to High</option>
+                <option value="price-desc" selected="@(Model.SortBy == "price-desc")">Price: High to Low</option>
+                <option value="newest" selected="@(Model.SortBy == "newest")">Newest First</option>
+                <option value="bestseller" selected="@(Model.SortBy == "bestseller")">Best Sellers</option>
+            </select>
+        </div>
     </div>
 
-    <div class="col-md-5">
-        <label class="form-label" for="q">Search</label>
-        <input class="form-control" id="q" name="q" value="@Model.Q" placeholder="name contains..." />
-    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-md-2">
+            <label class="form-label" for="priceMin">Min Price</label>
+            <input type="number" class="form-control" id="priceMin" name="priceMin" 
+                   value="@Model.PriceMin" step="0.01" min="0" placeholder="$0" />
+        </div>
 
-    <div class="col-md-3 d-flex align-items-end">
-        <button class="btn btn-primary" type="submit">Filter</button>
-        <a class="btn btn-link" asp-page="/Products/Index">Reset</a>
+        <div class="col-md-2">
+            <label class="form-label" for="priceMax">Max Price</label>
+            <input type="number" class="form-control" id="priceMax" name="priceMax" 
+                   value="@Model.PriceMax" step="0.01" min="0" placeholder="Any" />
+        </div>
+
+        <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check me-3">
+                <input class="form-check-input" type="checkbox" id="showDiscontinued" 
+                       name="showDiscontinued" value="true" checked="@Model.ShowDiscontinued" />
+                <label class="form-check-label" for="showDiscontinued">
+                    Show discontinued
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="showAdvanced" 
+                       name="showAdvanced" value="true" checked="@Model.ShowAdvanced" />
+                <label class="form-check-label" for="showAdvanced">
+                    <strong>Show Advanced</strong>
+                </label>
+            </div>
+        </div>
+
+        <div class="col-md-5 d-flex align-items-end justify-content-end">
+            <button class="btn btn-primary me-2" type="submit">Apply Filters</button>
+            <a class="btn btn-outline-secondary" asp-page="/Products/Index">Clear All</a>
+        </div>
     </div>
 </form>
 
@@ -33,12 +101,141 @@
 {
     <div class="alert alert-warning" role="alert">
         @Model.ErrorMessage
+        
+        @if (Model.ErrorDetailsData != null)
+        {
+            <hr class="my-3" />
+            <details class="mt-3">
+                <summary class="fw-bold" style="cursor: pointer;">Show Technical Details (Development Mode)</summary>
+                <div class="mt-3 small">
+                    <div class="mb-3">
+                        <strong>Exception Type:</strong>
+                        <code class="d-block mt-1 p-2 bg-light">@Model.ErrorDetailsData.ExceptionType</code>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Message:</strong>
+                        <pre class="mt-1 p-2 bg-light border">@Model.ErrorDetailsData.Message</pre>
+                    </div>
+
+                    @if (Model.ErrorDetailsData.SqlErrorNumber.HasValue)
+                    {
+                        <div class="mb-3">
+                            <strong>SQL Error Details:</strong>
+                            <ul class="list-unstyled mt-1 p-2 bg-light border">
+                                <li><strong>Error Number:</strong> @Model.ErrorDetailsData.SqlErrorNumber</li>
+                                <li><strong>State:</strong> @Model.ErrorDetailsData.SqlErrorState</li>
+                                <li><strong>Class:</strong> @Model.ErrorDetailsData.SqlErrorClass</li>
+                                @if (!string.IsNullOrWhiteSpace(Model.ErrorDetailsData.SqlErrorMessage))
+                                {
+                                    <li><strong>SQL Message:</strong> @Model.ErrorDetailsData.SqlErrorMessage</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    @if (Model.ErrorDetailsData.InnerExceptions.Count > 0)
+                    {
+                        <div class="mb-3">
+                            <strong>Inner Exceptions:</strong>
+                            <ol class="mt-1">
+                                @foreach (var inner in Model.ErrorDetailsData.InnerExceptions)
+                                {
+                                    <li class="mb-2">
+                                        <code>@inner.ExceptionType</code>
+                                        <pre class="mt-1 p-2 bg-light border small">@inner.Message</pre>
+                                    </li>
+                                }
+                            </ol>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(Model.ErrorDetailsData.StackTrace))
+                    {
+                        <div class="mb-3">
+                            <strong>Stack Trace:</strong>
+                            <pre class="mt-1 p-2 bg-light border" style="font-size: 0.75rem; max-height: 400px; overflow-y: auto;">@Model.ErrorDetailsData.StackTrace</pre>
+                        </div>
+                    }
+                </div>
+            </details>
+        }
     </div>
 }
 
-@if (Model.Products.Count == 0 && string.IsNullOrWhiteSpace(Model.ErrorMessage))
+@if (Model.Products.Count == 0 && Model.ProductsEnriched.Count == 0 && string.IsNullOrWhiteSpace(Model.ErrorMessage))
 {
     <p class="text-muted">No products found.</p>
+}
+else if (Model.ShowAdvanced && Model.ProductsEnriched.Count > 0)
+{
+    <div class="alert alert-info" role="alert">
+        <strong>Advanced View:</strong> Showing enriched data with sales analytics, margins, and lifecycle information.
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-striped table-sm">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Color</th>
+                    <th>Size</th>
+                    <th class="text-end">List Price</th>
+                    <th class="text-end">Cost</th>
+                    <th class="text-end">Margin %</th>
+                    <th>Status</th>
+                    <th class="text-end">Days</th>
+                    <th class="text-end">Units Sold</th>
+                    <th class="text-end">Revenue</th>
+                    <th class="text-end">Weight</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.ProductsEnriched)
+                {
+                    var statusClass = p.LifecycleStatus switch
+                    {
+                        "Active" => "text-success",
+                        "Phase Out" => "text-warning",
+                        "Discontinued" => "text-muted",
+                        _ => ""
+                    };
+                    var marginClass = p.MarginPercent switch
+                    {
+                        null => "",
+                        < 0 => "text-danger",
+                        < 20 => "text-warning",
+                        _ => "text-success"
+                    };
+                    
+                    <tr>
+                        <td>@p.Name</td>
+                        <td>@(p.CategoryName ?? "-")</td>
+                        <td>@(p.Color ?? "-")</td>
+                        <td>@(p.Size ?? "-")</td>
+                        <td class="text-end">@p.ListPrice.ToString("C2", usCulture)</td>
+                        <td class="text-end">@(p.StandardCost?.ToString("C2", usCulture) ?? "-")</td>
+                        <td class="text-end @marginClass">
+                            @if (p.MarginPercent.HasValue)
+                            {
+                                @p.MarginPercent.Value.ToString("F1")<text>%</text>
+                            }
+                            else
+                            {
+                                <text>-</text>
+                            }
+                        </td>
+                        <td class="@statusClass">@p.LifecycleStatus</td>
+                        <td class="text-end">@p.DaysInCatalog</td>
+                        <td class="text-end">@p.TotalUnitsSold.ToString("N0")</td>
+                        <td class="text-end">@p.TotalRevenue.ToString("C2", usCulture)</td>
+                        <td class="text-end">@(p.Weight?.ToString("F2") ?? "-")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 else if (Model.Products.Count > 0)
 {
@@ -58,7 +255,7 @@ else if (Model.Products.Count > 0)
                     <td>@p.Name</td>
                     <td>@(p.CategoryName ?? "-")</td>
                     <td>@(p.Color ?? "-")</td>
-                    <td class="text-end">@p.ListPrice.ToString("C")</td>
+                    <td class="text-end">@p.ListPrice.ToString("C2", usCulture)</td>
                 </tr>
             }
         </tbody>

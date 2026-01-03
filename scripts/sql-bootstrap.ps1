@@ -13,13 +13,7 @@ if ([string]::IsNullOrWhiteSpace($bootstrapEnabledRaw)) {
   $bootstrapEnabledRaw = $env:SQL_BOOTSTRAP_ENABLED
 }
 
-if (-not [string]::IsNullOrWhiteSpace($bootstrapEnabledRaw)) {
-  $disabledValues = @('0', 'false', 'no', 'off')
-  if ($disabledValues -contains $bootstrapEnabledRaw.ToString().Trim().ToLowerInvariant()) {
-    Write-Host 'SQL bootstrap is disabled (SQL_BOOTSTRAP_ENABLED=false). Skipping postprovision SQL setup.'
-    exit 0
-  }
-}
+
 
 $rg = $envJson.RESOURCE_GROUP_NAME
 $sqlServerName = $envJson.SQL_SERVER_NAME
@@ -35,7 +29,6 @@ if ([string]::IsNullOrWhiteSpace($rg) -or [string]::IsNullOrWhiteSpace($sqlServe
   throw "Missing required azd outputs. Ensure 'azd provision' completed successfully and outputs are present."
 }
 
-Write-Host "Bootstrapping SQL permissions for database '$dbName' on server '$sqlServerFqdn'";
 
 # Print the key values instructors commonly need for manual steps.
 Write-Host ''
@@ -48,6 +41,19 @@ if (-not [string]::IsNullOrWhiteSpace($uamiName)) { Write-Host "USER_ASSIGNED_MI
 if (-not [string]::IsNullOrWhiteSpace($uamiClientId)) { Write-Host "USER_ASSIGNED_MI_CLIENT_ID=$uamiClientId" }
 Write-Host '------------------------------'
 Write-Host ''
+
+
+if (-not [string]::IsNullOrWhiteSpace($bootstrapEnabledRaw)) {
+  $disabledValues = @('0', 'false', 'no', 'off')
+  if ($disabledValues -contains $bootstrapEnabledRaw.ToString().Trim().ToLowerInvariant()) {
+    Write-Host 'SQL bootstrap is disabled (SQL_BOOTSTRAP_ENABLED=false). Skipping postprovision SQL setup.'
+    exit 0
+  }
+}
+
+
+Write-Host "Bootstrapping SQL permissions for database '$dbName' on server '$sqlServerFqdn'";
+
 
 # Step 0: Ensure the current workstation IP is allowed by SQL firewall.
 # We do this here (in addition to any IaC rule) because azd may skip infra updates and still run hooks.

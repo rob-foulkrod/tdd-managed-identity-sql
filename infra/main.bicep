@@ -29,11 +29,26 @@ var tags = {
   SecurityControl: 'Ignore'  // Required for MTT managed subscriptions
 }
 
+var abbrs = loadJsonContent('./abbreviations.json')
+var resourceToken = toLower(uniqueString(subscription().subscriptionId, environmentName, location))
+
 // This deploys the Resource Group
 resource rg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
   name: 'rg-${environmentName}'
   location: location
   tags: tags
+}
+
+// Monitoring: Log Analytics workspace + Application Insights
+module monitoring './core/monitor/monitoring.bicep' = {
+  name: 'monitoring'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    logAnalyticsName: '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
+    applicationInsightsName: '${abbrs.insightsComponents}${resourceToken}'
+  }
 }
 
 // CONTRIBUTOR: Uncomment and customize the resources module below for your infrastructure.
@@ -49,6 +64,8 @@ module resources './resources.bicep' = {
     whitelistPublicIp: whitelistPublicIp
     sqlAdminLogin: sqlAdminLogin
     sqlAdminPassword: sqlAdminPassword
+    applicationInsightsName: monitoring.outputs.applicationInsightsName
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
   }
 }
 
@@ -72,3 +89,7 @@ output SYSTEM_ASSIGNED_MI_PRINCIPAL_ID string = resources.outputs.SYSTEM_ASSIGNE
 output USER_ASSIGNED_MI_CLIENT_ID string = resources.outputs.USER_ASSIGNED_MI_CLIENT_ID
 output USER_ASSIGNED_MI_RESOURCE_ID string = resources.outputs.USER_ASSIGNED_MI_RESOURCE_ID
 output USER_ASSIGNED_MI_NAME string = resources.outputs.USER_ASSIGNED_MI_NAME
+output APPLICATIONINSIGHTS_CONNECTION_STRING string = monitoring.outputs.applicationInsightsConnectionString
+output APPLICATIONINSIGHTS_NAME string = monitoring.outputs.applicationInsightsName
+output LOGANALYTICS_WORKSPACE_ID string = monitoring.outputs.logAnalyticsWorkspaceId
+output LOGANALYTICS_WORKSPACE_NAME string = monitoring.outputs.logAnalyticsWorkspaceName

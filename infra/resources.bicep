@@ -14,6 +14,12 @@ param sqlAdminLogin string = 'sqladmin'
 @description('SQL Server administrator password')
 param sqlAdminPassword string
 
+@description('Application Insights instance name for telemetry')
+param applicationInsightsName string
+
+@description('Log Analytics workspace resource ID for diagnostic logs')
+param logAnalyticsWorkspaceId string
+
 // Load abbreviations for resource naming
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -53,12 +59,14 @@ module webApp './core/host/appservice.bicep' = {
 		tags: union(tags, { 'azd-service-name': 'web' })
 		appServicePlanId: appServicePlan.outputs.id
 		managedIdentity: true
+		applicationInsightsName: applicationInsightsName
 
 		runtimeName: 'dotnet'
 		runtimeVersion: '8.0'
 		linuxFxVersion: 'DOTNETCORE|8.0'
 
 		appSettings: {
+			ASPNETCORE_ENVIRONMENT: 'Production'
 			Sql__Server: sqlServer.properties.fullyQualifiedDomainName
 			Sql__Database: sqlServer::database.name
 			ManagedIdentity__UserAssignedClientId: ''
@@ -106,6 +114,102 @@ resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
 			startIpAddress: whitelistPublicIp
 			endIpAddress: whitelistPublicIp
 		}
+	}
+}
+
+// Diagnostic settings: send App Service platform logs/metrics to Log Analytics
+resource appService 'Microsoft.Web/sites@2022-03-01' existing = {
+	name: appServiceName
+}
+
+resource appServiceDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+	scope: appService
+	name: 'app-service-diagnostics'
+	properties: {
+		workspaceId: logAnalyticsWorkspaceId
+		logs: [
+			{
+				categoryGroup: 'allLogs'
+				enabled: true
+			}
+		]
+		metrics: [
+			{
+				category: 'AllMetrics'
+				enabled: true
+			}
+		]
+	}
+	dependsOn: [
+		webApp
+	]
+}
+
+// Diagnostic settings: send SQL Database logs/metrics to Log Analytics
+resource sqlDatabaseDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+	scope: sqlServer::database
+	name: 'sql-database-diagnostics'
+	properties: {
+		workspaceId: logAnalyticsWorkspaceId
+		logs: [
+			{
+				category: 'SQLInsights'
+				enabled: true
+			}
+			{
+				category: 'QueryStoreRuntimeStatistics'
+				enabled: true
+			}
+			{
+				category: 'QueryStoreWaitStatistics'
+				enabled: true
+			}
+			{
+				category: 'Errors'
+				enabled: true
+			}
+			{
+				category: 'DatabaseWaitStatistics'
+				enabled: true
+			}
+			{
+				category: 'Timeouts'
+				enabled: true
+			}
+			{
+				category: 'Blocks'
+				enabled: true
+			}
+			{
+				category: 'Deadlocks'
+				enabled: true
+			}
+			{
+				category: 'AutomaticTuning'
+				enabled: true
+			}
+		]
+		metrics: [
+			{
+				category: 'AllMetrics'
+				enabled: true
+			}
+		]
+	}
+}
+
+// Diagnostic settings: send SQL Server logs to Log Analytics
+resource sqlServerDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+	scope: sqlServer
+	name: 'sql-server-diagnostics'
+	properties: {
+		workspaceId: logAnalyticsWorkspaceId
+		metrics: [
+			{
+				category: 'AllMetrics'
+				enabled: true
+			}
+		]
 	}
 }
 

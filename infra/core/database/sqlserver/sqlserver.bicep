@@ -29,9 +29,6 @@ resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
   resource database 'databases' = {
     name: databaseName
     location: location
-    properties: {
-      sampleName: 'AdventureWorksLT'
-    }
   }
 
   resource firewall 'firewallRules' = {

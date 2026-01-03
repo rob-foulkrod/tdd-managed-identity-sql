@@ -3,6 +3,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorPages();
 
+// Application Insights telemetry
+builder.Services.AddApplicationInsightsTelemetry();
+
 builder.Services.AddOptions<ManagedIdentityCatalog.Options.SqlOptions>()
     .Bind(builder.Configuration.GetSection(ManagedIdentityCatalog.Options.SqlOptions.SectionName))
     .Validate(o => !string.IsNullOrWhiteSpace(o.Server), "Sql:Server is required")
@@ -15,7 +18,11 @@ builder.Services.AddSingleton<ManagedIdentityCatalog.Services.IdentityModeProvid
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
 {
     app.UseExceptionHandler("/Error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
