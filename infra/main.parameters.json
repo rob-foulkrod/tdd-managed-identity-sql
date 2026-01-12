@@ -7,6 +7,12 @@
       },
       "location": {
         "value": "${AZURE_LOCATION}"
+      },
+      "whitelistPublicIp": {
+        "value": "${PUBLIC_IP}"
+      },
+      "sqlAdminPassword": {
+        "value": "${SQL_ADMIN_PASSWORD}"
       }
     }
 }
