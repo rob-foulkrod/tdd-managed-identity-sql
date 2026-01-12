@@ -101,13 +101,18 @@ Before the app can query Azure SQL using Managed Identity, the database must con
         select
             dp.state_desc,
             dp.permission_name,
+            dp.class_desc,
             s.name as schema_name,
-            grantee.name as grantee
+            grantee.name as grantee_name
         from sys.database_permissions dp
-        join sys.database_principals grantee on grantee.principal_id = dp.grantee_principal_id
-        left join sys.schemas s on s.schema_id = dp.major_id
+        join sys.database_principals grantee
+            on grantee.principal_id = dp.grantee_principal_id
+        join sys.schemas s
+            on dp.class = 3
+            and dp.major_id = s.schema_id
         where grantee.name = 'catalog_reader'
-            and dp.class_desc = 'SCHEMA';
+          and dp.permission_name = 'SELECT'
+          and s.name = 'SalesLT';
 
         -- Confirm the system-assigned identity is a member of the role
         select
