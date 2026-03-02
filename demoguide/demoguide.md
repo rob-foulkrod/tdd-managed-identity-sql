@@ -32,12 +32,10 @@ Provide a bullet list of the Resource Group and all deployed resources with name
 * sqldb-[token] - Azure SQL Database (AdventureWorksLT sample)
 * id-[token] - User-assigned Managed Identity (created for the conversion demo)
 
-[Add a screenshot of the deployed Resource Group with resources]
-
-<img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/screenshot1.png" alt="[Your Resource Group Description]" style="width:70%;">
+<img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/01-resource-group-overview.png" alt="Resource Group overview" style="width:70%;">
 <br></br>
 
-<img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/screenshot2.png" alt="[Your Resource Details]" style="width:70%;">
+<img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/Resources.png" alt="Deployed resources in the Resource Group" style="width:70%;">
 <br></br>
 
 ### 2. What can I demo from this scenario after deployment
@@ -73,9 +71,16 @@ Before the app can query Azure SQL using Managed Identity, the database must con
 
 2. Configure Azure SQL for System-assigned Managed Identity
     1. In the Azure Portal, open the deployed SQL server (sql-[token]).
+
+        <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/05-sql-server-overview.png" alt="SQL Server overview in Azure Portal" style="width:70%;">
+
     2. Set an **Azure AD admin** for the SQL server (use your instructor account).
     3. Open the deployed SQL database (sqldb-[token]) and select **Query editor** in the Azure Portal.
         - Sign in with the same account you configured as the SQL Azure AD admin.
+
+        <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/06-query-editor-login.png" alt="Query editor sign-in" style="width:70%;">
+
+        <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/07-query-editor-authenticated.png" alt="Query editor authenticated" style="width:70%;">
     4. If the `postprovision` hook did not run (or you want to show the manual steps), run the following SQL to create a custom role and authorize the system-assigned identity user:
 
         ```sql
@@ -125,20 +130,39 @@ Before the app can query Azure SQL using Managed Identity, the database must con
             and memberp.name = '<APP_SERVICE_NAME>';
         ```
 
+        <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/08-query-editor-role-members.png" alt="Query editor showing role members" style="width:70%;">
+
 3. Verify the app is using System-assigned Managed Identity
     1. Browse to `APP_ENDPOINT`.
+
+        <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/09-webapp-home-system-assigned.png" alt="Web app home page showing System-assigned identity" style="width:70%;">
+
     2. Open **Products** and apply a category filter or name search.
+
+        <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/10-products.png" alt="Products page" style="width:70%;">
+
     3. In the navbar, note the identity label shows **System-assigned**.
 
 4. Convert to User-assigned Managed Identity (instructor-led)
     1. In the Azure Portal, open the App Service (app-[token]).
+
+        <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/02-app-service-overview.png" alt="App Service overview" style="width:70%;">
+
     2. Go to **Identity**.
         - (Optional) Under **System assigned**, set **Status** to **Off** and **Save**.
+
+        <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/03-system-assigned-identity.png" alt="System-assigned identity tab" style="width:70%;">
+
         - Under **User assigned**, click **Add**, then select the deployed identity (id-[token]).
+
+        <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/04-user-assigned-empty.png" alt="User-assigned identity tab" style="width:70%;">
 
     3. (Optional failure demo) Do **not** set the `ManagedIdentity__UserAssignedClientId` application setting yet.
         1. Browse to `APP_ENDPOINT` and open **Products**.
         2. Expected result: the page shows an error (unable to query Azure SQL) because the User Managed Identity requires a Client ID to be specified.
+
+            <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/10-products-error-no-access.png" alt="Products page showing error without correct identity configuration" style="width:70%;">
+
         3. Explain the code path that selects which identity to use:
             - Connection factory: [SqlConnectionFactory.cs](https://github.com/rob-foulkrod/tdd-managed-identity-sql/blob/main/src/web/ManagedIdentityCatalog/Services/SqlConnectionFactory.cs)
             - Identity label (based on config): [IdentityModeProvider.cs](https://github.com/rob-foulkrod/tdd-managed-identity-sql/blob/main/src/web/ManagedIdentityCatalog/Services/IdentityModeProvider.cs)
@@ -146,6 +170,9 @@ Before the app can query Azure SQL using Managed Identity, the database must con
     4. Fix the configuration
         1. Go to **Configuration** and set the app setting:
             - `ManagedIdentity__UserAssignedClientId` = `USER_ASSIGNED_MI_CLIENT_ID`
+
+            <img src="https://raw.githubusercontent.com/rob-foulkrod/tdd-managed-identity-sql/main/demoguide/screenshots/11-app-service-env-variables.png" alt="App Service environment variables configuration" style="width:70%;">
+
         2. Save changes and restart the App Service if prompted.
 
     5. In the Azure Portal **Query editor**, create and authorize the user-assigned identity in the database (skip if the `postprovision` hook already created it):
@@ -176,7 +203,6 @@ Before the app can query Azure SQL using Managed Identity, the database must con
 Optional wrap-up discussion:
 - Remove the System-assigned identity user from the database and/or disable the app’s System-assigned identity to demonstrate that only the User-assigned identity is now required.
 
-Add screenshots where relevant. They should be stored in their own subfolder under the demoguide folder.
 
 
 
